@@ -1905,8 +1905,8 @@ const char* Parcel::readString8Inplace(size_t* outLen) const
         const char* str = (const char*)readInplace(size+1);
         if (str != nullptr) {
             if (str[size] == '\0') {
-                return str;
-            }
+            return str;
+        }
             android_errorWriteLog(0x534e4554, "172655291");
         }
     }
@@ -1968,7 +1968,7 @@ const char16_t* Parcel::readString16Inplace(size_t* outLen) const
         const char16_t* str = (const char16_t*)readInplace((size+1)*sizeof(char16_t));
         if (str != nullptr) {
             if (str[size] == u'\0') {
-                return str;
+            return str;
             }
             android_errorWriteLog(0x534e4554, "172655291");
         }
