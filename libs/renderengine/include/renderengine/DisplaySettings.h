@@ -60,13 +60,25 @@ struct DisplaySettings {
     // capture of a device in landscape while the buffer is in portrait
     // orientation.
     uint32_t orientation = ui::Transform::ROT_0;
+
+    // andr36oid CRT look: one extra full-screen pass after the layers, 0 = off for each.
+    // Only set for the console's own screen, never for screenshots or virtual displays.
+    float crtCurvature = 0.0f; // 0 - 1
+    float crtGlow = 0.0f;      // 0 - 1
+    float crtMask = 0.0f;      // 0 - 1, coloured phosphor mask
+    // the panel is turned by SurfaceFlinger, the mask stripes run along the buffer's y
+    bool crtRotated = false;
+
+    bool crtEnabled() const { return crtCurvature > 0.0f || crtGlow > 0.0f || crtMask > 0.0f; }
 };
 
 static inline bool operator==(const DisplaySettings& lhs, const DisplaySettings& rhs) {
     return lhs.physicalDisplay == rhs.physicalDisplay && lhs.clip == rhs.clip &&
             lhs.maxLuminance == rhs.maxLuminance && lhs.outputDataspace == rhs.outputDataspace &&
             lhs.colorTransform == rhs.colorTransform &&
-            lhs.clearRegion.hasSameRects(rhs.clearRegion) && lhs.orientation == rhs.orientation;
+            lhs.clearRegion.hasSameRects(rhs.clearRegion) && lhs.orientation == rhs.orientation &&
+            lhs.crtCurvature == rhs.crtCurvature && lhs.crtGlow == rhs.crtGlow &&
+            lhs.crtMask == rhs.crtMask && lhs.crtRotated == rhs.crtRotated;
 }
 
 // Defining PrintTo helps with Google Tests.
@@ -83,6 +95,8 @@ static inline void PrintTo(const DisplaySettings& settings, ::std::ostream* os) 
     *os << "\n    .clearRegion = ";
     PrintTo(settings.clearRegion, os);
     *os << "\n    .orientation = " << settings.orientation;
+    *os << "\n    .crt = " << settings.crtCurvature << " " << settings.crtGlow << " "
+        << settings.crtMask << " " << settings.crtRotated;
     *os << "\n}";
 }
 

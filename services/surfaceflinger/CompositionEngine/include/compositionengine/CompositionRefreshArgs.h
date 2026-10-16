@@ -77,6 +77,13 @@ struct CompositionRefreshArgs {
     // If true, client composition is always used.
     bool devOptForceClientComposition{false};
 
+    // andr36oid CRT look on the GPU (persist.andr36oid.crt.*), 0 = off for each. Applied
+    // to internal displays only; SurfaceFlinger forces client composition while any is on.
+    float crtCurvature{0.0f};
+    float crtGlow{0.0f};
+    float crtMask{0.0f};
+    bool crtRotated{false};
+
     // If set, causes the dirty regions to flash with the delay
     std::optional<std::chrono::microseconds> devOptFlashDirtyRegionsDelay;
 };

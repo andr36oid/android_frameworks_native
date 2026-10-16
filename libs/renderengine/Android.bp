@@ -60,6 +60,7 @@ filegroup {
         "gl/Program.cpp",
         "gl/ProgramCache.cpp",
         "gl/filters/BlurFilter.cpp",
+        "gl/filters/CrtFilter.cpp",
         "gl/filters/GenericProgram.cpp",
     ],
 }

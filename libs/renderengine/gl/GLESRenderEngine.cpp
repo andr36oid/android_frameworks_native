@@ -50,6 +50,7 @@
 #include "Program.h"
 #include "ProgramCache.h"
 #include "filters/BlurFilter.h"
+#include "filters/CrtFilter.h"
 
 #if RK_NV12_10_TO_NV12_BY_RGA
 #define UN_NEED_GL
@@ -1183,7 +1184,21 @@ status_t GLESRenderEngine::drawLayers(const DisplaySettings& display,
     }
     const auto blurLayersSize = blurLayers.size();
 
-    if (blurLayersSize == 0) {
+    // andr36oid CRT look: draw the layers offscreen, then one pass into the buffer.
+    // Not together with background blur, which has its own offscreen buffers.
+    bool crt = display.crtEnabled() && blurLayersSize == 0 && !mInProtectedContext;
+    if (crt && mCrtFilter == nullptr) {
+        mCrtFilter = new CrtFilter(*this);
+        checkErrors("CrtFilter creation");
+    }
+    if (crt && mCrtFilter->setAsDrawTarget(buffer->width, buffer->height) != NO_ERROR) {
+        ALOGE("CRT pass can't start, drawing without it");
+        crt = false;
+    }
+
+    if (crt) {
+        setViewportAndProjection(display.physicalDisplay, display.clip);
+    } else if (blurLayersSize == 0) {
         fbo = std::make_unique<BindNativeBufferAsFramebuffer>(*this, buffer, useFramebufferCache);
         if (fbo->getStatus() != NO_ERROR) {
             ALOGE("Failed to bind framebuffer! Aborting GPU composition for buffer (%p).",
@@ -1475,6 +1490,17 @@ status_t GLESRenderEngine::drawLayers(const DisplaySettings& display,
             setSourceY410BT2020(false);
             disableTexturing();
         }
+    }
+
+    if (crt) {
+        fbo = std::make_unique<BindNativeBufferAsFramebuffer>(*this, buffer, useFramebufferCache);
+        if (fbo->getStatus() != NO_ERROR) {
+            ALOGE("Failed to bind framebuffer! Aborting GPU composition for buffer (%p).",
+                  buffer->handle);
+            checkErrors();
+            return fbo->getStatus();
+        }
+        mCrtFilter->render(display);
     }
 
     if (drawFence != nullptr) {

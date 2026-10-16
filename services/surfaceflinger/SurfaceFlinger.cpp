@@ -45,6 +45,9 @@
 #include <configstore/Utils.h>
 #include <cutils/compiler.h>
 #include <cutils/properties.h>
+// __system_property_area_serial, for the CRT settings check
+#define _REALLY_INCLUDE_SYS__SYSTEM_PROPERTIES_H_
+#include <sys/_system_properties.h>
 #include <dlfcn.h>
 #include <dvr/vr_flinger.h>
 #include <errno.h>
@@ -2054,10 +2057,69 @@ bool SurfaceFlinger::handleMessageTransaction() {
     return runHandleTransaction;
 }
 
+namespace {
+
+// andr36oid CRT look on the GPU, from Settings > Display > CRT effect. Read again only
+// when some property changed, so a frame costs one serial check.
+struct CrtGpuSettings {
+    float curvature = 0.0f;
+    float glow = 0.0f;
+    float mask = 0.0f;
+    bool rotated = false;
+
+    bool on() const { return curvature > 0.0f || glow > 0.0f || mask > 0.0f; }
+    bool operator!=(const CrtGpuSettings& o) const {
+        return curvature != o.curvature || glow != o.glow || mask != o.mask ||
+                rotated != o.rotated;
+    }
+};
+
+float crtPercent(const char* name) {
+    return std::clamp(base::GetIntProperty(name, 0), 0, 100) / 100.0f;
+}
+
+// Returns true when the settings changed since the last call.
+bool readCrtGpuSettings(CrtGpuSettings* out) {
+    static bool sRead = false;
+    static uint32_t sSerial = 0;
+    const uint32_t serial = __system_property_area_serial();
+    if (sRead && serial == sSerial) {
+        return false;
+    }
+    sRead = true;
+    sSerial = serial;
+
+    CrtGpuSettings s;
+    if (base::GetIntProperty("persist.andr36oid.crt.enable", 0) == 1) {
+        s.curvature = crtPercent("persist.andr36oid.crt.curvature");
+        s.glow = crtPercent("persist.andr36oid.crt.glow");
+        s.mask = crtPercent("persist.andr36oid.crt.gpu_mask");
+    }
+    const std::string orientation =
+            base::GetProperty("ro.surface_flinger.primary_display_orientation", "");
+    s.rotated = orientation == "ORIENTATION_90" || orientation == "ORIENTATION_270";
+    const bool changed = s != *out;
+    *out = s;
+    return changed;
+}
+
+} // namespace
+
 void SurfaceFlinger::onMessageRefresh() {
     ATRACE_CALL();
 
     mRefreshPending = false;
+
+    // andr36oid CRT look: a change switches client composition on or off, as the
+    // "disable HW overlays" developer option does
+    static CrtGpuSettings sCrt;
+    if (readCrtGpuSettings(&sCrt)) {
+        ALOGI("CRT effect on the GPU: curvature %.2f, glow %.2f, phosphor mask %.2f", sCrt.curvature,
+              sCrt.glow, sCrt.mask);
+        invalidateHwcGeometry();
+        mVisibleRegionsDirty = true;
+        mRepaintEverything = true;
+    }
 
     compositionengine::CompositionRefreshArgs refreshArgs;
     const auto& displays = ON_MAIN_THREAD(mDisplays);
@@ -2092,7 +2154,11 @@ void SurfaceFlinger::onMessageRefresh() {
         mDrawingState.colorMatrixChanged = false;
     }
 
-    refreshArgs.devOptForceClientComposition = mDebugDisableHWC || mDebugRegion;
+    refreshArgs.devOptForceClientComposition = mDebugDisableHWC || mDebugRegion || sCrt.on();
+    refreshArgs.crtCurvature = sCrt.curvature;
+    refreshArgs.crtGlow = sCrt.glow;
+    refreshArgs.crtMask = sCrt.mask;
+    refreshArgs.crtRotated = sCrt.rotated;
 
     if (mDebugRegion != 0) {
         refreshArgs.devOptFlashDirtyRegionsDelay =

@@ -881,6 +881,14 @@ std::optional<base::unique_fd> Output::composeSurfaces(
     // Note: Updated by generateClientCompositionRequests
     clientCompositionDisplay.clearRegion = Region::INVALID_REGION;
 
+    // andr36oid CRT look: the console's own screen only, screenshots don't come here
+    if (outputState.layerStackInternal) {
+        clientCompositionDisplay.crtCurvature = refreshArgs.crtCurvature;
+        clientCompositionDisplay.crtGlow = refreshArgs.crtGlow;
+        clientCompositionDisplay.crtMask = refreshArgs.crtMask;
+        clientCompositionDisplay.crtRotated = refreshArgs.crtRotated;
+    }
+
     // Generate the client composition requests for the layers on this output.
     std::vector<LayerFE::LayerSettings> clientCompositionLayers =
             generateClientCompositionRequests(supportsProtectedContent,
