@@ -764,6 +764,56 @@ TEST_F(OutputUpdateAndWriteCompositionStateTest, forcesClientCompositionForAllLa
     mOutput->updateAndWriteCompositionState(args);
 }
 
+TEST_F(OutputUpdateAndWriteCompositionStateTest, crtForcesClientCompositionOnInternalDisplay) {
+    InjectedLayer layer;
+    injectOutputLayer(layer);
+    mOutput->editState().isEnabled = true;
+    mOutput->editState().layerStackInternal = true;
+
+    EXPECT_CALL(*layer.outputLayer, updateCompositionState(false, true, ui::Transform::ROT_0))
+            .Times(3);
+    EXPECT_CALL(*layer.outputLayer, writeStateToHWC(false)).Times(3);
+
+    CompositionRefreshArgs args;
+    args.crtCurvature = 0.5f;
+    mOutput->updateAndWriteCompositionState(args);
+    args.crtCurvature = 0.0f;
+    args.crtGlow = 0.5f;
+    mOutput->updateAndWriteCompositionState(args);
+    args.crtGlow = 0.0f;
+    args.crtMask = 0.5f;
+    mOutput->updateAndWriteCompositionState(args);
+}
+
+TEST_F(OutputUpdateAndWriteCompositionStateTest, crtDoesNotForceClientCompositionOnOtherDisplays) {
+    InjectedLayer layer;
+    injectOutputLayer(layer);
+    mOutput->editState().isEnabled = true;
+    mOutput->editState().layerStackInternal = false;
+
+    EXPECT_CALL(*layer.outputLayer, updateCompositionState(false, false, ui::Transform::ROT_0));
+    EXPECT_CALL(*layer.outputLayer, writeStateToHWC(false));
+
+    CompositionRefreshArgs args;
+    args.crtCurvature = 0.5f;
+    args.crtGlow = 0.5f;
+    args.crtMask = 0.5f;
+    mOutput->updateAndWriteCompositionState(args);
+}
+
+TEST_F(OutputUpdateAndWriteCompositionStateTest, disabledCrtDoesNotForceClientComposition) {
+    InjectedLayer layer;
+    injectOutputLayer(layer);
+    mOutput->editState().isEnabled = true;
+    mOutput->editState().layerStackInternal = true;
+
+    EXPECT_CALL(*layer.outputLayer, updateCompositionState(false, false, ui::Transform::ROT_0));
+    EXPECT_CALL(*layer.outputLayer, writeStateToHWC(false));
+
+    CompositionRefreshArgs args;
+    mOutput->updateAndWriteCompositionState(args);
+}
+
 /*
  * Output::prepareFrame()
  */

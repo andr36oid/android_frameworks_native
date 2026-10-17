@@ -17,6 +17,7 @@
 #define ATRACE_TAG ATRACE_TAG_GRAPHICS
 
 #include "CrtFilter.h"
+#include "../Program.h"
 
 #include <GLES2/gl2.h>
 #include <utils/Trace.h>
@@ -163,6 +164,9 @@ status_t CrtFilter::render(const DisplaySettings& display) {
                           (GLvoid*)(6 * sizeof(GLfloat)) /* offset */);
     mMeshBuffer.unbind();
     glDrawArrays(GL_TRIANGLES, 0 /* first */, 3 /* count */);
+    glDisableVertexAttribArray(mUvLoc);
+    glDisableVertexAttribArray(mPosLoc);
+    glEnableVertexAttribArray(Program::position);
 
     glUseProgram(0);
     glBindTexture(GL_TEXTURE_2D, 0);

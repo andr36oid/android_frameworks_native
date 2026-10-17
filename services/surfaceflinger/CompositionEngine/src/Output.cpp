@@ -584,11 +584,14 @@ void Output::updateAndWriteCompositionState(
 
     mLayerRequestingBackgroundBlur = findLayerRequestingBackgroundComposition();
     bool forceClientComposition = mLayerRequestingBackgroundBlur != nullptr;
+    const bool crtClientComposition = getState().layerStackInternal &&
+            (refreshArgs.crtCurvature > 0.0f || refreshArgs.crtGlow > 0.0f ||
+             refreshArgs.crtMask > 0.0f);
 
     for (auto* layer : getOutputLayersOrderedByZ()) {
         layer->updateCompositionState(refreshArgs.updatingGeometryThisFrame,
                                       refreshArgs.devOptForceClientComposition ||
-                                              forceClientComposition,
+                                              forceClientComposition || crtClientComposition,
                                       refreshArgs.internalDisplayRotationFlags);
 
         if (mLayerRequestingBackgroundBlur == layer) {

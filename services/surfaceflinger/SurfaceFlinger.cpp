@@ -2154,7 +2154,7 @@ void SurfaceFlinger::onMessageRefresh() {
         mDrawingState.colorMatrixChanged = false;
     }
 
-    refreshArgs.devOptForceClientComposition = mDebugDisableHWC || mDebugRegion || sCrt.on();
+    refreshArgs.devOptForceClientComposition = mDebugDisableHWC || mDebugRegion;
     refreshArgs.crtCurvature = sCrt.curvature;
     refreshArgs.crtGlow = sCrt.glow;
     refreshArgs.crtMask = sCrt.mask;

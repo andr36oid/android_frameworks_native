@@ -1402,6 +1402,49 @@ TEST_F(RenderEngineTest, drawLayers_fillShadow_translucentCasterWithAlpha) {
                       backgroundColor.a);
 }
 
+TEST_F(RenderEngineTest, crtMaskDoesNotLeakIntoFollowingUnfilteredFrame) {
+    renderengine::DisplaySettings settings;
+    settings.physicalDisplay = fullscreenRect();
+    settings.clip = fullscreenRect();
+    settings.crtMask = 1.0f;
+
+    renderengine::LayerSettings layer;
+    layer.geometry.boundaries = fullscreenRect().toFloatRect();
+    BufferSourceVariant<ForceOpaqueBufferVariant>::fillColor(layer, 1.0f, 1.0f, 1.0f, this);
+    layer.alpha = 1.0f;
+
+    invokeDraw(settings, {&layer}, mBuffer);
+    expectBufferColor(Rect(0, 0, 1, DEFAULT_DISPLAY_HEIGHT), 255, 0, 0, 255);
+    expectBufferColor(Rect(1, 0, 2, DEFAULT_DISPLAY_HEIGHT), 0, 255, 0, 255);
+    expectBufferColor(Rect(2, 0, 3, DEFAULT_DISPLAY_HEIGHT), 0, 0, 255, 255);
+
+    fillBuffer<ColorSourceVariant>(0.0f, 1.0f, 0.0f, 1.0f);
+    expectBufferColor(fullscreenRect(), 0, 255, 0, 255);
+    fillBuffer<BufferSourceVariant<ForceOpaqueBufferVariant>>(1.0f, 0.0f, 0.0f, 1.0f);
+    expectBufferColor(fullscreenRect(), 255, 0, 0, 255);
+}
+
+TEST_F(RenderEngineTest, crtCurvatureBlacksOutCornersWithoutChangingCenter) {
+    renderengine::DisplaySettings settings;
+    settings.physicalDisplay = fullscreenRect();
+    settings.clip = fullscreenRect();
+    settings.crtCurvature = 1.0f;
+
+    renderengine::LayerSettings layer;
+    layer.geometry.boundaries = fullscreenRect().toFloatRect();
+    ColorSourceVariant::fillColor(layer, 1.0f, 1.0f, 1.0f, this);
+    layer.alpha = 1.0f;
+
+    invokeDraw(settings, {&layer}, mBuffer);
+    expectBufferColor(Rect(0, 0, 1, 1), 0, 0, 0, 255);
+    expectBufferColor(Rect(DEFAULT_DISPLAY_WIDTH - 1, DEFAULT_DISPLAY_HEIGHT - 1,
+                           DEFAULT_DISPLAY_WIDTH, DEFAULT_DISPLAY_HEIGHT),
+                      0, 0, 0, 255);
+    expectBufferColor(Rect(DEFAULT_DISPLAY_WIDTH / 2, DEFAULT_DISPLAY_HEIGHT / 2,
+                           DEFAULT_DISPLAY_WIDTH / 2 + 1, DEFAULT_DISPLAY_HEIGHT / 2 + 1),
+                      255, 255, 255, 255);
+}
+
 TEST_F(RenderEngineTest, cleanupPostRender_cleansUpOnce) {
     renderengine::DisplaySettings settings;
     settings.physicalDisplay = fullscreenRect();

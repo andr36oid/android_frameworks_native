@@ -260,7 +260,7 @@ private:
     // Blur effect processor, only instantiated when a layer requests it.
     BlurFilter* mBlurFilter = nullptr;
     // andr36oid CRT pass, made the first time a frame asks for it
-    CrtFilter* mCrtFilter = nullptr;
+    std::unique_ptr<CrtFilter> mCrtFilter;
 
     class FlushTracer {
     public:

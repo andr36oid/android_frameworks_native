@@ -455,6 +455,10 @@ GLESRenderEngine::~GLESRenderEngine() {
     // Destroy the image manager first.
     mImageManager = nullptr;
     std::lock_guard<std::mutex> lock(mRenderingMutex);
+    if (mCrtFilter != nullptr) {
+        useProtectedContext(false);
+        mCrtFilter.reset();
+    }
     unbindFrameBuffer(mDrawingBuffer.get());
     mDrawingBuffer = nullptr;
     while (!mFramebufferImageCache.empty()) {
@@ -1188,7 +1192,7 @@ status_t GLESRenderEngine::drawLayers(const DisplaySettings& display,
     // Not together with background blur, which has its own offscreen buffers.
     bool crt = display.crtEnabled() && blurLayersSize == 0 && !mInProtectedContext;
     if (crt && mCrtFilter == nullptr) {
-        mCrtFilter = new CrtFilter(*this);
+        mCrtFilter = std::make_unique<CrtFilter>(*this);
         checkErrors("CrtFilter creation");
     }
     if (crt && mCrtFilter->setAsDrawTarget(buffer->width, buffer->height) != NO_ERROR) {
