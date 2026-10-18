@@ -231,6 +231,13 @@ void KeyboardInputMapper::process(const RawEvent* rawEvent) {
             int32_t usageCode = mCurrentHidUsage;
             mCurrentHidUsage = 0;
 
+            // andr36oid: drop the kernel's own key repeats (value 2, e.g. gpio-keys with
+            // autorepeat for the volume buttons, about 30 a second). Each one became a new
+            // key down; the volume panel fell behind and kept changing the volume after the
+            // button was let go. The input dispatcher repeats held keys on its own.
+            if (rawEvent->value == 2) {
+                break;
+            }
             if (isKeyboardOrGamepadKey(scanCode)) {
                 processKey(rawEvent->when, rawEvent->value != 0, scanCode, usageCode);
             }
